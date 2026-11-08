@@ -1,11 +1,10 @@
 ﻿using FFmpegDownloader.Services;
 using FFmpegDownloader.ViewModels;
-using FFmpegDownloader.Views;
+using FFmpegDownloader.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
 using Wpf.Ui;
-using Wpf.Ui.DependencyInjection;
 
 namespace FFmpegDownloader;
 
@@ -13,34 +12,17 @@ public partial class App : Application
 {
     private readonly IHost _host;
 
-    public static readonly Localization Localization = new();
-
     public App()
     {
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {
-                // Navigation
-                services.AddNavigationViewPageProvider();
-
-                // ViewModels
                 services.AddSingleton<MainViewModel>()
-                        .AddSingleton<DownloadsViewModel>()
-                        .AddSingleton<AddDownloadViewModel>()
-                        .AddSingleton<SettingsViewModel>();
-
-                // Pages
-                services.AddTransient<DownloadsView>()
-                        .AddTransient<AddDownloadView>()
-                        .AddTransient<SettingsView>();
-
-                // Services
-                services.AddSingleton<IDownloadService, DownloadService>()
-                        .AddSingleton<IContentDialogService, ContentDialogService>()
-                        .AddSingleton<ISnackbarService, SnackbarService>();
-
-                // Fenêtre principale
-                services.AddSingleton<MainWindow>();
+                        .AddSingleton<MainWindow>()
+                        .AddSingleton<AdvancedOptionsViewModel>()
+                        .AddTransient<AdvancedOptionsWindow>()
+                        .AddSingleton<IFFmpegService, FFmpegService>()
+                        .AddSingleton<IContentDialogService, ContentDialogService>();
             })
             .Build();
     }
@@ -49,8 +31,11 @@ public partial class App : Application
     {
         await _host.StartAsync();
 
-        MainWindow = _host.Services.GetRequiredService<MainWindow>();
-        MainWindow.Show();
+        MainWindow mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        MainWindow = mainWindow;
+        mainWindow.Show();
+
+        await mainWindow.InitializeAsync();
 
         base.OnStartup(e);
     }
