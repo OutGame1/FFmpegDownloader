@@ -8,8 +8,9 @@ public interface IFFmpegService
 
     Task<bool> InstallAsync();
 
-    Task<int> RunAsync(DownloadItemViewModel download,
+    Task<bool> RunAsync(DownloadItemViewModel download,
                        IProgress<string> output,
+                       IProgress<TimeSpan> currentTime,
                        IProgress<double> progress,
                        CancellationToken cancellationToken = default);
 }

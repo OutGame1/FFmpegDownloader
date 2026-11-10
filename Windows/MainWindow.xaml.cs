@@ -16,8 +16,6 @@ public partial class MainWindow : FluentWindow
     private readonly IFFmpegService ffmpegService;
     private readonly IContentDialogService dialogService;
 
-    private bool allowClose;
-
     public MainWindow(MainViewModel mainViewModel,
                       IFFmpegService ffmpegService,
                       IContentDialogService dialogService)
@@ -31,6 +29,8 @@ public partial class MainWindow : FluentWindow
         DataContext = mainViewModel;
 
         dialogService.SetDialogHost(RootContentDialogHost);
+
+        Closing += OnClosing;
     }
 
     private void BrowseOutputFile(object sender, RoutedEventArgs e)
@@ -126,22 +126,21 @@ public partial class MainWindow : FluentWindow
         FFmpegConsole.ScrollToEnd();
     }
 
-    private async void OnClosing(object sender, CancelEventArgs e)
+    private async void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (allowClose)
-            return;
-
-        if (!mainViewModel.IsQueueRunning)
-            return;
-
-        // Empêche la fermeture immédiate.
         e.Cancel = true;
 
-        // Attend l'arrêt réel de FFmpeg.
-        await mainViewModel.StopQueueAsync();
+        Closing -= OnClosing;
 
-        // Autorise maintenant la fermeture.
-        allowClose = true;
-        Close();
+        try
+        {
+            mainViewModel.LoadingMessage = "Arrêt de la file d'attente...";
+            await mainViewModel.StopQueueAsync();
+        }
+        finally
+        {
+            mainViewModel.LoadingMessage = string.Empty;
+            await Dispatcher.InvokeAsync(Close);
+        }
     }
 }

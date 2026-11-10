@@ -9,7 +9,6 @@
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Title="FFmpeg Downloader"
-                 Closing="OnClosing"
                  ResizeMode="CanResize"
                  WindowState="Maximized"
                  WindowStyle="SingleBorderWindow"
@@ -75,12 +74,12 @@
 
                             <Grid Margin="0,4,0,0"
                                   VerticalAlignment="Top">
-                                
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                
+
                                 <TextBox Grid.Column="0"
                                          Text="{Binding VideoUrl, UpdateSourceTrigger=PropertyChanged}"
                                          Height="36"
@@ -417,6 +416,32 @@
             </Grid>
 
         </Grid>
+
+        <!-- Voile de chargement -->
+        <Border Grid.RowSpan="2"
+                Panel.ZIndex="100"
+                Background="#B8000000"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+
+                <!-- Animation -->
+                <ui:ProgressRing IsIndeterminate="True"
+                                 Width="48"
+                                 Height="48"
+                                 HorizontalAlignment="Center"
+                                 Margin="0,0,0,20" />
+
+                <!-- Message -->
+                <TextBlock Text="{Binding LoadingMessage}"
+                           Foreground="White"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+
+            </StackPanel>
+        </Border>
 
         <ui:ContentDialogHost x:Name="RootContentDialogHost"
                               Grid.RowSpan="2"

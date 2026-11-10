@@ -35,6 +35,12 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(StopQueueCommand))]
     public partial bool IsQueueRunning { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLoading))]
+    public partial string LoadingMessage { get; set; } = string.Empty;
+
+    public bool IsLoading => LoadingMessage.Length != 0;
+
     public MainViewModel(IServiceProvider serviceProvider,
                          IFFmpegService ffmpegService,
                          AdvancedOptionsViewModel advancedOptionsViewModel)
@@ -65,8 +71,6 @@ public partial class MainViewModel : ObservableObject
 
         Downloads.Add(new DownloadItemViewModel(VideoUrl, OutputPath, options));
 
-        StartQueueCommand.NotifyCanExecuteChanged();
-
         VideoUrl = string.Empty;
         OutputPath = string.Empty;
         advancedOptionsViewModel.Reset();
@@ -80,6 +84,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStartQueue))]
     private async Task StartQueueAsync()
     {
+        if (IsQueueRunning)
+            return;
+
         IsQueueRunning = true;
 
         CancellationTokenSource cancellationSource = new();
@@ -109,19 +116,26 @@ public partial class MainViewModel : ObservableObject
 
                 output.Report($">>> Téléchargement : {download.Url}");
 
+                IProgress<TimeSpan> currentTime = new Progress<TimeSpan>(
+                        value => download.CurrentTime = value);
+
+                IProgress<double> progress = new Progress<double>(
+                    value => download.Progress = value);
+
                 try
                 {
-                    IProgress<double> progress = new Progress<double>(value => download.Progress = value);
+                    bool success = await ffmpegService.RunAsync(download, output, currentTime, progress, cancellationToken);
 
-                    int exitCode = await ffmpegService.RunAsync(download, output, progress, cancellationToken);
-
-                    download.Status = exitCode == 0
-                        ? DownloadStatus.Completed
-                        : DownloadStatus.Failed;
-
-                    output.Report(exitCode == 0
-                        ? ">>> Téléchargement terminé."
-                        : $">>> FFmpeg a terminé avec le code d'erreur {exitCode}.");
+                    if (success)
+                    {
+                        download.Status = DownloadStatus.Completed;
+                        output.Report(">>> Téléchargement terminé.");
+                    }
+                    else
+                    {
+                        download.Status = DownloadStatus.Failed;
+                        output.Report($">>> Échec du téléchargement.");
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -152,6 +166,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(IsQueueRunning))]
     public async Task StopQueueAsync()
     {
+        if (!IsQueueRunning)
+            return;
+
         Task? completionTask = queueCompletion?.Task;
 
         queueCancellation?.Cancel();

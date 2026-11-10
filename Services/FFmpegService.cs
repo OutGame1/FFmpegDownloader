@@ -1,8 +1,7 @@
-﻿using FFmpegDownloader.ViewModels;
+﻿using FFMpegCore;
+using FFmpegDownloader.ViewModels;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
-using System.Text;
 
 namespace FFmpegDownloader.Services;
 
@@ -80,152 +79,42 @@ public sealed class FFmpegService : IFFmpegService
         }
     }
 
-    public async Task<int> RunAsync(DownloadItemViewModel download,
-                                    IProgress<string> output,
-                                    IProgress<double> progress,
-                                    CancellationToken cancellationToken = default)
+    public async Task<bool> RunAsync(DownloadItemViewModel download,
+                                     IProgress<string> output,
+                                     IProgress<TimeSpan> currentTime,
+                                     IProgress<double> progress,
+                                     CancellationToken cancellationToken = default)
     {
-        ProcessStartInfo startInfo = new()
-        {
-            FileName = "ffmpeg",
-            ArgumentList =
-            {
-                "-hide_banner",
-                "-nostdin",
-                "-y",
-                "-progress",
-                "pipe:1",
-                "-nostats"
-            },
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
+        FFMpegArgumentProcessor processor = FFMpegArguments
+            .FromUrlInput(download.Url, options => BuildHeaders(download, options))
+            .OutputToFile(download.OutputPath, overwrite: true, options => options
+                .CopyStreams()
+                .WithMetadata("title", download.Options.Title)
+                .WithMetadata("artist", download.Options.Artist)
+                .WithMetadata("album", download.Options.Album)
+                .WithMetadata("date", download.Options.Date)
+                .WithMetadata("genre", download.Options.Genre)
+                .WithMetadata("comment", download.Options.Comment))
+            .NotifyOnStandardError(output.Report)
+            .NotifyOnProgress(currentTime)
+            .NotifyOnPercentageProgress(progress);
 
-        // En-têtes HTTP
-        if (download.Options.Headers.Count > 0)
-        {
-            string headers = string.Concat(
-                download.Options.Headers.Select(h => $"{h.Name}: {h.Value}\r\n"));
+        FFMpegResult result = await processor.ProcessAsynchronously(
+            throwOnError: false,
+            cancellationToken: cancellationToken);
 
-            startInfo.ArgumentList.Add("-headers");
-            startInfo.ArgumentList.Add(headers);
+        return result.Success;
+    }
+
+    private static void BuildHeaders(DownloadItemViewModel download, FFMpegInputOptions options)
+    {
+        if (download.Options.Headers.Count == 0)
+        {
+            return;
         }
 
-        // Source
-        startInfo.ArgumentList.Add("-i");
-        startInfo.ArgumentList.Add(download.Url);
-
-        // Copie des flux sans réencodage
-        startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add("copy");
-
-        // Métadonnées
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"title={download.Options.Title}");
-
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"artist={download.Options.Artist}");
-
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"album={download.Options.Album}");
-
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"date={download.Options.Date}");
-
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"genre={download.Options.Genre}");
-
-        startInfo.ArgumentList.Add("-metadata");
-        startInfo.ArgumentList.Add($"comment={download.Options.Comment}");
-
-        // Destination
-        startInfo.ArgumentList.Add(download.OutputPath);
-
-        using Process process = new()
-        {
-            StartInfo = startInfo,
-            EnableRaisingEvents = true
-        };
-
-        process.Start();
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        using CancellationTokenRegistration registration = cancellationToken.Register(() =>
-        {
-            try
-            {
-                if (!process.HasExited)
-                    process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-                // Le processus est déjà terminé.
-            }
-            catch (Win32Exception)
-            {
-                // Impossible de terminer le processus.
-            }
-        });
-
-        long durationTicks = 0;
-
-        // Lecture des messages FFmpeg (stderr)
-        async Task ReadErrorAsync()
-        {
-            while (await process.StandardError.ReadLineAsync(cancellationToken) is { } line)
-            {
-                output.Report(line);
-
-                // Récupération de la durée totale
-                int index = line.IndexOf("Duration:", StringComparison.Ordinal);
-
-                if (index >= 0)
-                {
-                    string durationText = line[(index + 9)..].Split(',')[0].Trim();
-
-                    if (TimeSpan.TryParse(durationText, CultureInfo.InvariantCulture, out TimeSpan duration))
-                        Interlocked.Exchange(ref durationTicks, duration.Ticks);
-                }
-            }
-        }
-
-        // Lecture de la progression (stdout)
-        async Task ReadProgressAsync()
-        {
-            while (await process.StandardOutput.ReadLineAsync(cancellationToken) is { } line)
-            {
-                Debug.WriteLine($"[PROGRESS DEBUG] {line}");
-
-                if (!line.StartsWith("out_time_us=", StringComparison.Ordinal))
-                    continue;
-
-                if (!long.TryParse(line.AsSpan("out_time_us=".Length), out long outputTimeUs))
-                    continue;
-
-                long totalTicks = Interlocked.Read(ref durationTicks);
-
-                Debug.WriteLine($"[PROGRESS DEBUG] Durée : {totalTicks} ticks, temps traité : {outputTimeUs} µs");
-
-                if (totalTicks <= 0)
-                    continue;
-
-                double percentage = outputTimeUs * 10.0 / totalTicks * 100.0;
-
-                progress.Report(Math.Clamp(percentage, 0, 100));
-            }
-        }
-
-        Task errorTask = ReadErrorAsync();
-        Task progressTask = ReadProgressAsync();
-
-        await Task.WhenAll(errorTask, progressTask);
-        await process.WaitForExitAsync(cancellationToken);
-
-        return process.ExitCode;
+        string headers = string.Concat(
+            download.Options.Headers.Select(h => $"{h.Name}: {h.Value}\r\n"));
+        options.WithCustomArgument($"-headers \"{headers}\"");
     }
 }

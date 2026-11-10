@@ -8,15 +8,19 @@ public partial class DownloadItemViewModel(string url,
                                            string outputPath,
                                            DownloadOptionsSnapshot options) : ObservableObject
 {
-    public string Url { get; } = url;
+    public readonly string Url = url;
 
-    public string OutputPath { get; } = outputPath;
+    public readonly string OutputPath = outputPath;
 
-    public double Progress { get; set; } = 0;
+    public readonly DownloadOptionsSnapshot Options = options;
+
+    [ObservableProperty]
+    public partial double Progress { get; set; } = 0;
+
+    [ObservableProperty]
+    public partial TimeSpan CurrentTime { get; set; } = TimeSpan.Zero;
 
     public string FileName => Path.GetFileName(OutputPath);
-
-    public DownloadOptionsSnapshot Options { get; } = options;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusMessage))]
