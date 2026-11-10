@@ -212,6 +212,7 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
 
                                                 <Grid Grid.Row="0">
@@ -253,21 +254,27 @@
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="{Binding Url}" />
 
-                                                <!-- Progression -->
-                                                <StackPanel Grid.Row="2">
-                                                    <ProgressBar Value="{Binding Progress}"
-                                                                 Minimum="0"
-                                                                 Maximum="100"
-                                                                 Height="6"
-                                                                 Margin="0,16,0,0" />
+                                                <!-- Barre de progression -->
+                                                <ProgressBar Grid.Row="2"
+                                                             Value="{Binding Progress}"
+                                                             Minimum="0"
+                                                             Maximum="100"
+                                                             Height="6"
+                                                             Margin="0,12,0,4" />
 
-                                                    <TextBlock Text="{Binding Progress, StringFormat={}{0:F1}%}"
-                                                               Foreground="#A1A7B0"
-                                                               FontSize="12"
-                                                               HorizontalAlignment="Right"
-                                                               Margin="0,6,0,0" />
-                                                </StackPanel>
+                                                <!-- Pourcentage -->
+                                                <TextBlock Grid.Row="3"
+                                                           Text="{Binding Progress, StringFormat={}{0:F1}%}"
+                                                           Foreground="#A1A7B0"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Right" />
 
+                                                <!-- Temps traité -->
+                                                <TextBlock Grid.Row="3"
+                                                           Text="{Binding FormattedTime}"
+                                                           Foreground="#A1A7B0"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Left" />
                                             </Grid>
                                         </Grid>
                                     </Border>
@@ -359,7 +366,8 @@
                         </Grid.RowDefinitions>
 
                         <!-- Barre supérieure du terminal -->
-                        <DockPanel Margin="0,0,0,12">
+                        <DockPanel Grid.Row="0"
+                                   Margin="0,0,0,12">
 
                             <StackPanel Orientation="Horizontal"
                                         VerticalAlignment="Center">
@@ -385,31 +393,25 @@
                         </DockPanel>
 
                         <!-- Contenu du terminal -->
-                        <TextBox Grid.Row="1"
-                                 x:Name="FFmpegConsole"
-                                 Text="{Binding FFmpegOutput, Mode=OneWay}"
-                                 TextChanged="FFmpegOutputChanged"
-                                 IsReadOnly="True"
-                                 AcceptsReturn="True"
-                                 TextWrapping="NoWrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 HorizontalScrollBarVisibility="Auto"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Foreground="#D4D4D4"
-                                 FontFamily="Cascadia Mono"
-                                 FontSize="12"
-                                 Padding="0">
+                        <ScrollViewer Grid.Row="1"
+                                      x:Name="FFmpegConsole"
+                                      Background="#181A1F"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Auto">
 
-                            <TextBox.Style>
-                                <Style TargetType="TextBox">
-                                    <Setter Property="Background"
-                                            Value="Transparent" />
-                                    <Setter Property="BorderBrush"
-                                            Value="Transparent" />
-                                </Style>
-                            </TextBox.Style>
-                        </TextBox>
+                            <ItemsControl ItemsSource="{Binding FFmpegOutput}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   Foreground="#D1D5DB"
+                                                   TextWrapping="NoWrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </ScrollViewer>
 
                     </Grid>
                 </Border>

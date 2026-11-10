@@ -27,8 +27,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(AddToQueueCommand))]
     public partial string OutputPath { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    public partial string FFmpegOutput { get; set; } = string.Empty;
+    public ObservableCollection<string> FFmpegOutput { get; } = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartQueueCommand))]
@@ -95,7 +94,8 @@ public partial class MainViewModel : ObservableObject
 
         CancellationToken cancellationToken = cancellationSource.Token;
 
-        IProgress<string> output = new Progress<string>(message => FFmpegOutput += message + Environment.NewLine);
+        FFmpegOutput.Clear();
+        IProgress<string> output = new Progress<string>(FFmpegOutput.Add);
 
         try
         {

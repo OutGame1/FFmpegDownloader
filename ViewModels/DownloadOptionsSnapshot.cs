@@ -7,4 +7,7 @@ public sealed record DownloadOptionsSnapshot(IReadOnlyList<HttpHeaderSnapshot> H
                                              string Date,
                                              string Genre,
                                              string Comment,
-                                             string ExtraArguments);
+                                             string ExtraArguments)
+{
+    public string HeadersString() => string.Join("\r\n", Headers);
+};

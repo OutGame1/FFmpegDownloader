@@ -1,6 +1,7 @@
 ﻿using FFmpegDownloader.Services;
 using FFmpegDownloader.ViewModels;
 using Microsoft.Win32;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -15,6 +16,8 @@ public partial class MainWindow : FluentWindow
     private readonly MainViewModel mainViewModel;
     private readonly IFFmpegService ffmpegService;
     private readonly IContentDialogService dialogService;
+
+    private bool isConsoleAtBottom = true;
 
     public MainWindow(MainViewModel mainViewModel,
                       IFFmpegService ffmpegService,
@@ -31,6 +34,8 @@ public partial class MainWindow : FluentWindow
         dialogService.SetDialogHost(RootContentDialogHost);
 
         Closing += OnClosing;
+        FFmpegConsole.ScrollChanged += OnFFmpegConsoleScrollChanged;
+        mainViewModel.FFmpegOutput.CollectionChanged += FFmpegOutputChanged;
     }
 
     private void BrowseOutputFile(object sender, RoutedEventArgs e)
@@ -121,9 +126,16 @@ public partial class MainWindow : FluentWindow
         Application.Current.Shutdown();
     }
 
-    private void FFmpegOutputChanged(object sender, TextChangedEventArgs e)
+    private void OnFFmpegConsoleScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        FFmpegConsole.ScrollToEnd();
+        isConsoleAtBottom =
+            e.VerticalOffset + e.ViewportHeight >= e.ExtentHeight - 1;
+    }
+
+    private void FFmpegOutputChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (isConsoleAtBottom)
+            FFmpegConsole.ScrollToEnd();
     }
 
     private async void OnClosing(object? sender, CancelEventArgs e)

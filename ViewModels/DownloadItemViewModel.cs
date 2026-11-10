@@ -8,17 +8,24 @@ public partial class DownloadItemViewModel(string url,
                                            string outputPath,
                                            DownloadOptionsSnapshot options) : ObservableObject
 {
-    public readonly string Url = url;
+    public Uri Url { get; } = new Uri(url);
 
-    public readonly string OutputPath = outputPath;
+    public string OutputPath { get; } = outputPath;
 
-    public readonly DownloadOptionsSnapshot Options = options;
+    public DownloadOptionsSnapshot Options { get; } = options;
 
     [ObservableProperty]
     public partial double Progress { get; set; } = 0;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedTime))]
     public partial TimeSpan CurrentTime { get; set; } = TimeSpan.Zero;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedTime))]
+    public partial TimeSpan TotalTime { get; set; } = TimeSpan.Zero;
+
+    public string FormattedTime => $"{CurrentTime:hh\\:mm\\:ss} / {TotalTime:hh\\:mm\\:ss}";
 
     public string FileName => Path.GetFileName(OutputPath);
 

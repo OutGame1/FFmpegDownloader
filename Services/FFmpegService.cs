@@ -85,8 +85,17 @@ public sealed class FFmpegService : IFFmpegService
                                      IProgress<double> progress,
                                      CancellationToken cancellationToken = default)
     {
+        IMediaAnalysis mediaAnalysis = await AnalyseAsync(download, cancellationToken);
+
+        download.TotalTime = mediaAnalysis.Duration;
+
         FFMpegArgumentProcessor processor = FFMpegArguments
-            .FromUrlInput(download.Url, options => BuildHeaders(download, options))
+            .FromUrlInput(download.Url, options =>
+            {
+                string headers = download.Options.HeadersString();
+                if (headers.Length > 0)
+                    options.WithCustomArgument($"-headers \"{headers}\"");
+            })
             .OutputToFile(download.OutputPath, overwrite: true, options => options
                 .CopyStreams()
                 .WithMetadata("title", download.Options.Title)
@@ -97,7 +106,7 @@ public sealed class FFmpegService : IFFmpegService
                 .WithMetadata("comment", download.Options.Comment))
             .NotifyOnStandardError(output.Report)
             .NotifyOnProgress(currentTime)
-            .NotifyOnPercentageProgress(progress);
+            .NotifyOnPercentageProgress(progress, mediaAnalysis.Duration);
 
         FFMpegResult result = await processor.ProcessAsynchronously(
             throwOnError: false,
@@ -106,15 +115,15 @@ public sealed class FFmpegService : IFFmpegService
         return result.Success;
     }
 
-    private static void BuildHeaders(DownloadItemViewModel download, FFMpegInputOptions options)
+    private static async Task<IMediaAnalysis> AnalyseAsync(DownloadItemViewModel download, CancellationToken cancellationToken = default)
     {
-        if (download.Options.Headers.Count == 0)
-        {
-            return;
-        }
+        string headers = download.Options.HeadersString();
+        string? customArguments = headers.Length > 0
+            ? $"-headers \"{headers}\""
+            : null;
 
-        string headers = string.Concat(
-            download.Options.Headers.Select(h => $"{h.Name}: {h.Value}\r\n"));
-        options.WithCustomArgument($"-headers \"{headers}\"");
+        return await FFProbe.AnalyseAsync(download.Url,
+                                          customArguments: customArguments,
+                                          cancellationToken: cancellationToken);
     }
 }
