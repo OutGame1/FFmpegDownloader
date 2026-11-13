@@ -202,11 +202,10 @@
                                             <Border x:Name="StatusIndicator"
                                                     Grid.Column="0"
                                                     Background="#7D8795"
-                                                    CornerRadius="2"
-                                                    Margin="0,2,0,2" />
+                                                    CornerRadius="2" />
 
                                             <Grid Grid.Column="1"
-                                                  Margin="14,0,0,0">
+                                                  Margin="12,0,0,0">
 
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
@@ -215,35 +214,30 @@
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
 
-                                                <Grid Grid.Row="0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
+                                                <!-- Nom du fichier -->
+                                                <TextBlock Grid.Row="0"
+                                                           Text="{Binding FileName}"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#F5F5F5"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding OutputPath}"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left" />
 
-                                                    <!-- Nom du fichier -->
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding FileName}"
-                                                               FontSize="14"
+                                                <!-- Statut -->
+                                                <Border Grid.Row="0"
+                                                        x:Name="StatusBadge"
+                                                        Background="#343A44"
+                                                        CornerRadius="8"
+                                                        Padding="10,5"
+                                                        HorizontalAlignment="Right">
+
+                                                    <TextBlock Text="{Binding StatusMessage}"
+                                                               FontSize="12"
                                                                FontWeight="SemiBold"
-                                                               Foreground="#F5F5F5"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding OutputPath}"
-                                                               VerticalAlignment="Center" />
-
-                                                    <!-- Statut -->
-                                                    <Border Grid.Column="1"
-                                                            x:Name="StatusBadge"
-                                                            Background="#343A44"
-                                                            CornerRadius="8"
-                                                            Padding="10,5">
-
-                                                        <TextBlock Text="{Binding StatusMessage}"
-                                                                   FontSize="12"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="#E5E7EB" />
-                                                    </Border>
-                                                </Grid>
+                                                               Foreground="#E5E7EB" />
+                                                </Border>
 
                                                 <!-- URL -->
                                                 <TextBlock Grid.Row="1"
@@ -252,7 +246,8 @@
                                                            FontWeight="SemiBold"
                                                            Foreground="#A1A7B0"
                                                            TextTrimming="CharacterEllipsis"
-                                                           ToolTip="{Binding Url}" />
+                                                           ToolTip="{Binding Url}"
+                                                           Margin="0,8,0,0"/>
 
                                                 <!-- Barre de progression -->
                                                 <ProgressBar Grid.Row="2"
@@ -262,19 +257,19 @@
                                                              Height="6"
                                                              Margin="0,12,0,4" />
 
-                                                <!-- Pourcentage -->
-                                                <TextBlock Grid.Row="3"
-                                                           Text="{Binding Progress, StringFormat={}{0:F1}%}"
-                                                           Foreground="#A1A7B0"
-                                                           FontSize="12"
-                                                           HorizontalAlignment="Right" />
-
                                                 <!-- Temps traité -->
                                                 <TextBlock Grid.Row="3"
                                                            Text="{Binding FormattedTime}"
                                                            Foreground="#A1A7B0"
                                                            FontSize="12"
                                                            HorizontalAlignment="Left" />
+
+                                                <!-- Pourcentage -->
+                                                <TextBlock Grid.Row="3"
+                                                           Text="{Binding Progress, StringFormat={}{0:F1}%}"
+                                                           Foreground="#A1A7B0"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Right" />
                                             </Grid>
                                         </Grid>
                                     </Border>
