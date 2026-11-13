@@ -169,11 +169,19 @@ public partial class MainViewModel : ObservableObject
         if (!IsQueueRunning)
             return;
 
-        Task? completionTask = queueCompletion?.Task;
+        try
+        {
+            LoadingMessage = "Arrêt de la file d'attente...";
 
-        queueCancellation?.Cancel();
+            Task? completionTask = queueCompletion?.Task;
 
-        if (completionTask is not null)
-            await completionTask;
+            queueCancellation?.Cancel();
+
+            if (completionTask is not null)
+                await completionTask;
+        } finally
+        {
+            LoadingMessage = string.Empty;
+        }
     }
 }

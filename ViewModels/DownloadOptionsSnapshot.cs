@@ -1,4 +1,6 @@
-﻿namespace FFmpegDownloader.ViewModels;
+﻿using static FFmpegDownloader.Helpers.StringHelper;
+
+namespace FFmpegDownloader.ViewModels;
 
 public sealed record DownloadOptionsSnapshot(IReadOnlyList<HttpHeaderSnapshot> Headers,
                                              string Title,
@@ -9,5 +11,5 @@ public sealed record DownloadOptionsSnapshot(IReadOnlyList<HttpHeaderSnapshot> H
                                              string Comment,
                                              string ExtraArguments)
 {
-    public string HeadersString() => string.Join("\r\n", Headers);
+    public string HeadersString() => string.Join(CrLf, Headers) + CrLf;
 };

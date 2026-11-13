@@ -146,12 +146,10 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            mainViewModel.LoadingMessage = "Arrêt de la file d'attente...";
             await mainViewModel.StopQueueAsync();
         }
         finally
         {
-            mainViewModel.LoadingMessage = string.Empty;
             await Dispatcher.InvokeAsync(Close);
         }
     }
