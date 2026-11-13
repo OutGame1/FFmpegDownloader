@@ -1,9 +1,7 @@
-﻿using FFmpegDownloader.Services;
+﻿using FFmpegDownloader.Interfaces;
 using FFmpegDownloader.ViewModels;
-using Microsoft.Win32;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Wpf.Ui;
@@ -11,7 +9,7 @@ using Wpf.Ui.Controls;
 
 namespace FFmpegDownloader.Windows;
 
-public partial class MainWindow : FluentWindow
+public sealed partial class MainWindow : FluentWindow
 {
     private readonly MainViewModel mainViewModel;
     private readonly IFFmpegService ffmpegService;
@@ -36,26 +34,6 @@ public partial class MainWindow : FluentWindow
         Closing += OnClosing;
         FFmpegConsole.ScrollChanged += OnFFmpegConsoleScrollChanged;
         mainViewModel.FFmpegOutput.CollectionChanged += FFmpegOutputChanged;
-    }
-
-    private void BrowseOutputFile(object sender, RoutedEventArgs e)
-    {
-        SaveFileDialog dialog = new()
-        {
-            Filter = "Matroska (*.mkv)|*.mkv|MP4 (*.mp4)|*.mp4",
-            AddExtension = true,
-            FileName = Path.GetFileName(mainViewModel.OutputPath)
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            mainViewModel.OutputPath = dialog.FileName;
-        }
-    }
-
-    private void ParseCurlCommand(object sender, RoutedEventArgs e)
-    {
-
     }
 
     public async Task InitializeAsync()

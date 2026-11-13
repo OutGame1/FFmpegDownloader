@@ -1,14 +1,25 @@
 ﻿using FFmpegDownloader.ViewModels;
+using System.Windows;
 using Wpf.Ui.Controls;
 
 namespace FFmpegDownloader.Windows;
 
-public partial class AdvancedOptionsWindow : FluentWindow
+public sealed partial class AdvancedOptionsWindow : FluentWindow
 {
-    public AdvancedOptionsWindow(AdvancedOptionsViewModel viewModel)
+    public AdvancedOptionsWindow(AdvancedOptionsViewModel advancedViewModel)
     {
         InitializeComponent();
 
-        DataContext = viewModel;
+        DataContext = advancedViewModel;
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = true;
     }
 }

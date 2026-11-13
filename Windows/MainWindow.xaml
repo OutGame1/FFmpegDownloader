@@ -87,7 +87,7 @@
 
                                 <Button Grid.Column="1"
                                         Content="À partir d'une cURL"
-                                        Click="ParseCurlCommand"
+                                        Command="{Binding ImportCurlCommand}"
                                         Height="36"
                                         Padding="16,0" />
                             </Grid>
@@ -115,7 +115,7 @@
 
                                 <Button Grid.Column="1"
                                         Content="Parcourir"
-                                        Click="BrowseOutputFile"
+                                        Command="{Binding BrowseOutputFileCommand}"
                                         Height="36"
                                         Padding="16,0" />
                             </Grid>

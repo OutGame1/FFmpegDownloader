@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using FFmpegDownloader.Enums;
+using FFmpegDownloader.Models;
 using System.IO;
 
 namespace FFmpegDownloader.ViewModels;

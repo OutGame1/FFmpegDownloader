@@ -1,10 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FFmpegDownloader.Models;
 using System.Collections.ObjectModel;
 
 namespace FFmpegDownloader.ViewModels;
 
-public partial class AdvancedOptionsViewModel : ObservableObject
+public sealed partial class AdvancedOptionsViewModel : ObservableObject
 {
     public ObservableCollection<HttpHeaderViewModel> Headers { get; } = [];
 

@@ -1,18 +1,23 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FFmpegDownloader.Enums;
-using FFmpegDownloader.Services;
+using FFmpegDownloader.Interfaces;
+using FFmpegDownloader.Models;
 using FFmpegDownloader.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 
 namespace FFmpegDownloader.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IServiceProvider serviceProvider;
     private readonly IFFmpegService ffmpegService;
+    private readonly ICurlParserService curlParserService;
     private readonly AdvancedOptionsViewModel advancedOptionsViewModel;
     private CancellationTokenSource? queueCancellation;
     private TaskCompletionSource? queueCompletion;
@@ -42,10 +47,12 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(IServiceProvider serviceProvider,
                          IFFmpegService ffmpegService,
+                         ICurlParserService curlParserService,
                          AdvancedOptionsViewModel advancedOptionsViewModel)
     {
         this.serviceProvider = serviceProvider;
         this.ffmpegService = ffmpegService;
+        this.curlParserService = curlParserService;
         this.advancedOptionsViewModel = advancedOptionsViewModel;
 
         Downloads.CollectionChanged += (_, _) =>
@@ -179,9 +186,58 @@ public partial class MainViewModel : ObservableObject
 
             if (completionTask is not null)
                 await completionTask;
-        } finally
+        }
+        finally
         {
             LoadingMessage = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseOutputFile()
+    {
+        SaveFileDialog dialog = new()
+        {
+            Filter = "Matroska (*.mkv)|*.mkv|MP4 (*.mp4)|*.mp4",
+            AddExtension = true,
+            FileName = Path.GetFileName(OutputPath)
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            OutputPath = dialog.FileName;
+        }
+    }
+
+    [RelayCommand]
+    private void ImportCurl()
+    {
+        CurlImportWindow window = serviceProvider.GetRequiredService<CurlImportWindow>();
+        window.Owner = Application.Current.MainWindow;
+
+        if (window.ShowDialog() != true)
+            return;
+
+        try
+        {
+            CurlRequest request = curlParserService.Parse(window.CommandText);
+
+            VideoUrl = request.Url;
+
+            advancedOptionsViewModel.Headers.Clear();
+            foreach (KeyValuePair<string, string> header in request.Headers)
+            {
+                advancedOptionsViewModel.Headers.Add(
+                    new HttpHeaderViewModel
+                    {
+                        Name = header.Key,
+                        Value = header.Value
+                    });
+            }
+        } catch (Exception exception)
+        {
+            // TODO: Afficher un message d'erreur à l'utilisateur.
+            Debug.WriteLine(exception.Message);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace FFmpegDownloader.ViewModels;
+﻿namespace FFmpegDownloader.Models;
 
 public sealed record HttpHeaderSnapshot(string Name,
                                         string Value)

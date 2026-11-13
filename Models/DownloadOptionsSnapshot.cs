@@ -1,6 +1,6 @@
 ﻿using static FFmpegDownloader.Helpers.StringHelper;
 
-namespace FFmpegDownloader.ViewModels;
+namespace FFmpegDownloader.Models;
 
 public sealed record DownloadOptionsSnapshot(IReadOnlyList<HttpHeaderSnapshot> Headers,
                                              string Title,

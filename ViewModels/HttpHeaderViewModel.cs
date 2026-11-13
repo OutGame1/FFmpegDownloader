@@ -2,7 +2,7 @@
 
 namespace FFmpegDownloader.ViewModels;
 
-public partial class HttpHeaderViewModel : ObservableObject
+public sealed partial class HttpHeaderViewModel : ObservableObject
 {
     [ObservableProperty]
     public partial string Name { get; set; } = string.Empty;

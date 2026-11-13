@@ -1,6 +1,6 @@
 ﻿using FFmpegDownloader.ViewModels;
 
-namespace FFmpegDownloader.Services;
+namespace FFmpegDownloader.Interfaces;
 
 public interface IFFmpegService
 {

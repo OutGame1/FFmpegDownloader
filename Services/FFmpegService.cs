@@ -1,4 +1,5 @@
 ﻿using FFMpegCore;
+using FFmpegDownloader.Interfaces;
 using FFmpegDownloader.ViewModels;
 using System.ComponentModel;
 using System.Diagnostics;
