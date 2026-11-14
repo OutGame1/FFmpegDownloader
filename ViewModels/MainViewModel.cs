@@ -15,12 +15,38 @@ namespace FFmpegDownloader.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    private readonly IServiceProvider serviceProvider;
-    private readonly IFFmpegService ffmpegService;
-    private readonly ICurlParserService curlParserService;
-    private readonly AdvancedOptionsViewModel advancedOptionsViewModel;
-    private CancellationTokenSource? queueCancellation;
-    private TaskCompletionSource? queueCompletion;
+
+    public MainViewModel(IServiceProvider serviceProvider,
+                         IFFmpegService ffmpegService,
+                         ICurlParserService curlParserService,
+                         AdvancedOptionsViewModel advancedOptionsViewModel)
+    {
+        ServiceProvider = serviceProvider;
+        FFmpegService = ffmpegService;
+        CurlParserService = curlParserService;
+        AdvancedOptionsViewModel = advancedOptionsViewModel;
+
+        OutputNotifier = new Progress<string>(FFmpegOutput.Add);
+
+        Downloads.CollectionChanged += (_, _) =>
+        {
+            StartQueueCommand.NotifyCanExecuteChanged();
+            StopQueueCommand.NotifyCanExecuteChanged();
+        };
+    }
+
+    #region Champs
+
+    private readonly IServiceProvider ServiceProvider;
+    private readonly IFFmpegService FFmpegService;
+    private readonly ICurlParserService CurlParserService;
+    private readonly AdvancedOptionsViewModel AdvancedOptionsViewModel;
+    private CancellationTokenSource? QueueCancellation;
+    private TaskCompletionSource? QueueCompletion;
+
+    #endregion
+
+    #region Propriétés observables
 
     public ObservableCollection<DownloadItemViewModel> Downloads { get; } = [];
 
@@ -43,29 +69,26 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLoading))]
     public partial string LoadingMessage { get; set; } = string.Empty;
 
+    #endregion
+
+    #region Propriétés calculées
+
     public bool IsLoading => LoadingMessage.Length != 0;
 
-    public MainViewModel(IServiceProvider serviceProvider,
-                         IFFmpegService ffmpegService,
-                         ICurlParserService curlParserService,
-                         AdvancedOptionsViewModel advancedOptionsViewModel)
-    {
-        this.serviceProvider = serviceProvider;
-        this.ffmpegService = ffmpegService;
-        this.curlParserService = curlParserService;
-        this.advancedOptionsViewModel = advancedOptionsViewModel;
+    #endregion
 
-        Downloads.CollectionChanged += (_, _) =>
-        {
-            StartQueueCommand.NotifyCanExecuteChanged();
-            StopQueueCommand.NotifyCanExecuteChanged();
-        };
-    }
+    #region Notifieurs
+
+    public readonly IProgress<string> OutputNotifier;
+
+    #endregion
+
+    #region Commandes
 
     [RelayCommand]
     private void OpenAdvancedOptions()
     {
-        AdvancedOptionsWindow window = serviceProvider.GetRequiredService<AdvancedOptionsWindow>();
+        AdvancedOptionsWindow window = ServiceProvider.GetRequiredService<AdvancedOptionsWindow>();
         window.Owner = Application.Current.MainWindow;
         window.ShowDialog();
     }
@@ -73,13 +96,13 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanAddToQueue))]
     private void AddToQueue()
     {
-        DownloadOptionsSnapshot options = advancedOptionsViewModel.CreateSnapshot();
+        DownloadOptions options = AdvancedOptionsViewModel.CreateSnapshot();
 
         Downloads.Add(new DownloadItemViewModel(VideoUrl, OutputPath, options));
 
         VideoUrl = string.Empty;
         OutputPath = string.Empty;
-        advancedOptionsViewModel.Reset();
+        AdvancedOptionsViewModel.Reset();
     }
 
     private bool CanAddToQueue() =>
@@ -96,13 +119,12 @@ public sealed partial class MainViewModel : ObservableObject
         IsQueueRunning = true;
 
         CancellationTokenSource cancellationSource = new();
-        queueCancellation = cancellationSource;
-        queueCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        QueueCancellation = cancellationSource;
+        QueueCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         CancellationToken cancellationToken = cancellationSource.Token;
 
         FFmpegOutput.Clear();
-        IProgress<string> output = new Progress<string>(FFmpegOutput.Add);
 
         try
         {
@@ -121,50 +143,44 @@ public sealed partial class MainViewModel : ObservableObject
                 download.Status = DownloadStatus.Downloading;
                 download.Progress = 0;
 
-                output.Report($">>> Téléchargement : {download.Url}");
+                FFmpegOutput.Add($">>> Téléchargement : {download.Url}");
 
-                IProgress<TimeSpan> currentTime = new Progress<TimeSpan>(
-                        value => download.CurrentTime = value);
+                DownloadRequest downloadRequest = new(download.Url,
+                                                      download.OutputPath,
+                                                      download.Options);
 
-                IProgress<double> progress = new Progress<double>(
-                    value => download.Progress = value);
+                bool success = await FFmpegService.RunAsync(downloadRequest,
+                                                                OutputNotifier,
+                                                                download.CurrentTimeNotifier,
+                                                                download.TotalTimeNotifier,
+                                                                download.ProgressNotifier,
+                                                                cancellationToken);
 
-                try
+                if (success)
                 {
-                    bool success = await ffmpegService.RunAsync(download, output, currentTime, progress, cancellationToken);
-
-                    if (success)
-                    {
-                        download.Status = DownloadStatus.Completed;
-                        output.Report(">>> Téléchargement terminé.");
-                    }
-                    else
-                    {
-                        download.Status = DownloadStatus.Failed;
-                        output.Report($">>> Échec du téléchargement.");
-                    }
+                    download.Status = DownloadStatus.Completed;
+                    FFmpegOutput.Add(">>> Téléchargement terminé.");
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                else if (cancellationToken.IsCancellationRequested)
                 {
                     download.Status = DownloadStatus.Paused;
-                    output.Report(">>> Téléchargement interrompu.");
-                    break;
+                    FFmpegOutput.Add(">>> Téléchargement interrompu.");
                 }
-                catch (Exception exception)
+                else
                 {
                     download.Status = DownloadStatus.Failed;
-                    output.Report($">>> Erreur : {exception.Message}");
+                    FFmpegOutput.Add($">>> Échec du téléchargement.");
                 }
             }
         }
         finally
         {
-            queueCancellation = null;
+            QueueCancellation = null;
             cancellationSource.Dispose();
             IsQueueRunning = false;
 
-            queueCompletion?.TrySetResult();
-            queueCompletion = null;
+            QueueCompletion?.TrySetResult();
+            QueueCompletion = null;
         }
     }
 
@@ -180,9 +196,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             LoadingMessage = "Arrêt de la file d'attente...";
 
-            Task? completionTask = queueCompletion?.Task;
+            Task? completionTask = QueueCompletion?.Task;
 
-            queueCancellation?.Cancel();
+            QueueCancellation?.Cancel();
 
             if (completionTask is not null)
                 await completionTask;
@@ -212,7 +228,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ImportCurl()
     {
-        CurlImportWindow window = serviceProvider.GetRequiredService<CurlImportWindow>();
+        CurlImportWindow window = ServiceProvider.GetRequiredService<CurlImportWindow>();
         window.Owner = Application.Current.MainWindow;
 
         if (window.ShowDialog() != true)
@@ -220,24 +236,28 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            CurlRequest request = curlParserService.Parse(window.CommandText);
+            CurlRequest request = CurlParserService.Parse(window.CommandText);
 
             VideoUrl = request.Url;
 
-            advancedOptionsViewModel.Headers.Clear();
+            AdvancedOptionsViewModel.Headers.Clear();
             foreach (KeyValuePair<string, string> header in request.Headers)
             {
-                advancedOptionsViewModel.Headers.Add(
+                AdvancedOptionsViewModel.Headers.Add(
                     new HttpHeaderViewModel
                     {
                         Name = header.Key,
                         Value = header.Value
                     });
             }
-        } catch (Exception exception)
+        }
+        catch (Exception exception)
         {
             // TODO: Afficher un message d'erreur à l'utilisateur.
             Debug.WriteLine(exception.Message);
         }
     }
+
+    #endregion
+
 }

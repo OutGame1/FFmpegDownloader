@@ -5,15 +5,29 @@ using System.IO;
 
 namespace FFmpegDownloader.ViewModels;
 
-public partial class DownloadItemViewModel(string url,
-                                           string outputPath,
-                                           DownloadOptionsSnapshot options) : ObservableObject
+public partial class DownloadItemViewModel : ObservableObject
 {
-    public Uri Url { get; } = new Uri(url);
 
-    public string OutputPath { get; } = outputPath;
+    public DownloadItemViewModel(string url,
+                                 string outputPath,
+                                 DownloadOptions options)
+    {
+        Url = new(url);
+        OutputPath = outputPath;
+        Options = options;
 
-    public DownloadOptionsSnapshot Options { get; } = options;
+        CurrentTimeNotifier = new Progress<TimeSpan>(value => CurrentTime = value);
+        TotalTimeNotifier = new Progress<TimeSpan>(value => TotalTime = value);
+        ProgressNotifier = new Progress<double>(value => Progress = value);
+    }
+
+    #region Propriétés observables
+
+    public Uri Url { get; }
+
+    public string OutputPath { get; }
+
+    public DownloadOptions Options { get; }
 
     [ObservableProperty]
     public partial double Progress { get; set; } = 0;
@@ -26,13 +40,17 @@ public partial class DownloadItemViewModel(string url,
     [NotifyPropertyChangedFor(nameof(FormattedTime))]
     public partial TimeSpan TotalTime { get; set; } = TimeSpan.Zero;
 
-    public string FormattedTime => $"{CurrentTime:hh\\:mm\\:ss} / {TotalTime:hh\\:mm\\:ss}";
-
-    public string FileName => Path.GetFileName(OutputPath);
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusMessage))]
     public partial DownloadStatus Status { get; set; } = DownloadStatus.Pending;
+
+    #endregion
+
+    #region Propriétés calculées
+
+    public string FormattedTime => $"{CurrentTime:hh\\:mm\\:ss} / {TotalTime:hh\\:mm\\:ss}";
+
+    public string FileName => Path.GetFileName(OutputPath);
 
     public string StatusMessage => Status switch
     {
@@ -43,4 +61,17 @@ public partial class DownloadItemViewModel(string url,
         DownloadStatus.Failed => "Échec",
         _ => "Inconnu"
     };
+
+    #endregion
+
+    #region Notifieurs
+
+    public readonly IProgress<double> ProgressNotifier;
+
+    public readonly IProgress<TimeSpan> CurrentTimeNotifier;
+
+    public readonly IProgress<TimeSpan> TotalTimeNotifier;
+
+    #endregion
+
 }

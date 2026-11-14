@@ -1,8 +1,9 @@
 ﻿using FFMpegCore;
 using FFmpegDownloader.Interfaces;
-using FFmpegDownloader.ViewModels;
+using FFmpegDownloader.Models;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 using static FFmpegDownloader.Helpers.StringHelper;
 
 namespace FFmpegDownloader.Services;
@@ -81,31 +82,24 @@ public sealed class FFmpegService : IFFmpegService
         }
     }
 
-    public async Task<bool> RunAsync(DownloadItemViewModel download,
-                                     IProgress<string> output,
-                                     IProgress<TimeSpan> currentTime,
-                                     IProgress<double> progress,
+    public async Task<bool> RunAsync(DownloadRequest download,
+                                     IProgress<string> outputNotifier,
+                                     IProgress<TimeSpan> currentTimeNotifier,
+                                     IProgress<TimeSpan> totalTimeNotifier,
+                                     IProgress<double> progressNotifier,
                                      CancellationToken cancellationToken = default)
     {
-        string headers = download.Options.HeadersString();
-
-        string? customArguments = headers.Length > 0
-            ? $"-headers {QuoteArgument(headers)}"
-            : null;
+        string customArguments = BuildCustomArguments(download);
 
         IMediaAnalysis mediaAnalysis = await FFProbe.AnalyseAsync(
             download.Url,
             customArguments: customArguments,
             cancellationToken: cancellationToken);
 
-        download.TotalTime = mediaAnalysis.Duration;
+        totalTimeNotifier.Report(mediaAnalysis.Duration);
 
         FFMpegArgumentProcessor processor = FFMpegArguments
-            .FromUrlInput(download.Url, options =>
-            {
-                if (customArguments != null)
-                    options.WithCustomArgument(customArguments);
-            })
+            .FromUrlInput(download.Url, options => options.WithCustomArgument(customArguments))
             .OutputToFile(download.OutputPath, overwrite: true, options => options
                 .CopyStreams()
                 .WithMetadata("title", download.Options.Title)
@@ -114,14 +108,40 @@ public sealed class FFmpegService : IFFmpegService
                 .WithMetadata("date", download.Options.Date)
                 .WithMetadata("genre", download.Options.Genre)
                 .WithMetadata("comment", download.Options.Comment))
-            .NotifyOnStandardError(output.Report)
-            .NotifyOnProgress(currentTime)
-            .NotifyOnPercentageProgress(progress, mediaAnalysis.Duration);
+            .NotifyOnStandardError(outputNotifier.Report)
+            .NotifyOnProgress(currentTimeNotifier)
+            .NotifyOnPercentageProgress(progressNotifier, mediaAnalysis.Duration);
 
         FFMpegResult result = await processor.ProcessAsynchronously(
             throwOnError: false,
             cancellationToken: cancellationToken);
 
         return result.Success;
+    }
+
+    private static string BuildCustomArguments(DownloadRequest download)
+    {
+        StringBuilder customArgumentsBuilder = new();
+
+        if (download.Options.Headers.Count > 0)
+            customArgumentsBuilder.AppendLine($"-headers {BuildHeadersString(download.Options.Headers)}");
+
+        return customArgumentsBuilder.ToString();
+    }
+
+    private static string BuildHeadersString(IDictionary<string, string> headers)
+    {
+        // Ajuste les en-têtes de cache pour forcer le téléchargement
+        headers.Remove("if-modified-since");
+        headers.Remove("if-none-match");
+        headers["cache-control"] = "no-cache";
+        headers["pragma"] = "no-cache";
+
+        IEnumerable<string> headerLines =
+            headers.Select(header => $"{header.Key}: {header.Value}");
+
+        string headersString = string.Join(CrLf, headerLines) + CrLf;
+
+        return QuoteArgument(headersString);
     }
 }

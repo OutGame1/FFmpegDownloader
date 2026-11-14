@@ -1,4 +1,4 @@
-﻿using FFmpegDownloader.ViewModels;
+﻿using FFmpegDownloader.Models;
 
 namespace FFmpegDownloader.Interfaces;
 
@@ -8,9 +8,10 @@ public interface IFFmpegService
 
     Task<bool> InstallAsync();
 
-    Task<bool> RunAsync(DownloadItemViewModel download,
-                       IProgress<string> output,
-                       IProgress<TimeSpan> currentTime,
-                       IProgress<double> progress,
-                       CancellationToken cancellationToken = default);
+    Task<bool> RunAsync(DownloadRequest download,
+                        IProgress<string> outputNotifier,
+                        IProgress<TimeSpan> currentTimeNotifier,
+                        IProgress<TimeSpan> totalTimeNotifier,
+                        IProgress<double> progressNotifier,
+                        CancellationToken cancellationToken = default);
 }

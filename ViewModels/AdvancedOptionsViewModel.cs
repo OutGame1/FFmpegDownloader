@@ -7,6 +7,9 @@ namespace FFmpegDownloader.ViewModels;
 
 public sealed partial class AdvancedOptionsViewModel : ObservableObject
 {
+
+    #region "Propriétés observables"
+
     public ObservableCollection<HttpHeaderViewModel> Headers { get; } = [];
 
     [ObservableProperty]
@@ -30,6 +33,10 @@ public sealed partial class AdvancedOptionsViewModel : ObservableObject
     [ObservableProperty]
     public partial string ExtraArguments { get; set; } = string.Empty;
 
+    #endregion
+
+    #region Commandes
+
     [RelayCommand]
     private void AddHeader()
     {
@@ -42,10 +49,10 @@ public sealed partial class AdvancedOptionsViewModel : ObservableObject
         Headers.Remove(header);
     }
 
-    public DownloadOptionsSnapshot CreateSnapshot()
-    {
-        return new DownloadOptionsSnapshot(
-            [.. Headers.Select(header => new HttpHeaderSnapshot(header.Name, header.Value))],
+    #endregion
+
+    public DownloadOptions CreateSnapshot() =>
+        new(Headers,
             Title,
             Artist,
             Album,
@@ -53,7 +60,6 @@ public sealed partial class AdvancedOptionsViewModel : ObservableObject
             Genre,
             Comment,
             ExtraArguments);
-    }
 
     public void Reset()
     {
